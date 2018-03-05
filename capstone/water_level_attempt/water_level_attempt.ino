@@ -110,13 +110,17 @@ H2O_pressure_abs = sensor.getPressure(ADC_4096);
    *  according to the SparkFun test, it looks like higher ADC values mean higher precision.
    *  SparkFun says:   
    *  "To measure to higher degrees of precision use the following sensor settings:
-   * ADC_256
-   * ADC_512
-   * ADC_1024
-   * ADC_2048
-   * ADC_4096"
+   * ADC_256 (must be 1 mbar)
+   * ADC_512 (...0.6 mbar)
+   * ADC_1024 (...0.4 mbar)
+   * ADC_2048 (...0.3 mbar)
+   * ADC_4096" (...0.2 mbar)
    * 
    * I am reading this as "higher ADC values means higher precision"
+   * 
+   * Beth comment: And if 1 bar of pressure ~= 30 feet or 10 m, the approximate accuracy of the sensor is
+   * 10 m * 0.2 mbar = 0.002 meters (or 2 mm). I think we can live with that for this project. 
+   * (1 bar = 10.19 m of fresh water if we wish to be more precise.)
    */
 
 // Include a conversion from absolute pressure into relative pressure (AKA, meters above sea level).
@@ -143,7 +147,7 @@ Serial.println(H2O_altitude_delta);
 */
   BaroPressure_mbar = mpl115a2.getPressure();  
   Serial.print("Barometric Pressure (mbar): ");
-  Serial.println(BaroPressure_mbar * 10, 4);
+  Serial.println(BaroPressure_mbar * 10, 4); //*10 because 1 Kilopascal (baro sensor) = 10 milibar (water pressure)
 
 String dataRec = createDataRecord();
   
