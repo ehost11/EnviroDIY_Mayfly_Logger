@@ -35,6 +35,7 @@ void loop()
     // Sensor readings may also be up to 2 seconds old
     float h = dht.readHumidity();
     float t = dht.readTemperature();
+    float tf = (t*9.0/5.0)+32;
 
     // check if returns are valid, if they are NaN (not a number) then something went wrong
     if (isnan(t) || isnan(h))
@@ -45,9 +46,9 @@ void loop()
     {
         Serial.print("Humidity: ");
         Serial.print(h);
-        Serial.print(" %\t");
+        Serial.print(" %\tf");
         Serial.print("Temperature: ");
-        Serial.print(t);
-        Serial.println(" *C");
+        Serial.print(tf);
+        Serial.println(" *F");
     }
 }
