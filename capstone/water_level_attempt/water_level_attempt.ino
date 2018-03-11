@@ -14,6 +14,17 @@
 #include <SparkFun_MS5803_I2C.h> // MS5803 pressure transducer (used for water pressure) with I2C library
 #include <SPI.h> // SPI library
 #include <SD.h> // MicroSD card library
+#include <OneWire.h> // OneWire library for DS18B20 Temp sensor
+#include <DallasTemperature.h> // DallasTemperature library for DS18B20 Temp sensor
+
+// Data wire is plugged into port 4 on the Mayfly Datalogger board (D4-D5 grove port)
+#define ONE_WIRE_BUS 4
+
+// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+OneWire oneWire(ONE_WIRE_BUS);
+
+// Pass our oneWire reference to Dallas Temperature. 
+DallasTemperature sensors(&oneWire);
 
 // Define variables
 // ADDRESS_HIGH = 0X76
@@ -23,24 +34,26 @@ MS5803 sensor(ADDRESS_HIGH);
 
 Adafruit_MPL115A2 mpl115a2;
 
-//Define the SD pin: digital pin 12 is the MicroSD slave select pin on the Mayfly.
+// Define the SD pin: digital pin 12 is the MicroSD slave select pin on the Mayfly.
 #define SD_SS_PIN 12
 
 // Define the data log file for storing data on the SD card.
-#define FILE_NAME "WaterLevel.txt"
+#define FILE_NAME "DATALOG.txt" // For some reason, the program only writes data to the SD card when this is the name of the file.
 
 // Data header  (these lines get written to the beginning of a file when it's created)
-#define LOGGERNAME "Water Level attempt"
+#define LOGGERNAME "Water level attempt"
 #define DATA_HEADER "Sample Number, Water Level"
 
 int samplenum = 1; // sample number starts at 1
                        
 // I am defining the variables in the SparkFun test sketch even though we may not use them.
 float H2O_temperature_c, H20_temperature_f; // Floats are precise to 6 or 7 digits.
-float BaroPressure_mbar; // Measured in kpa; will need to be converted to mbar (just multiply by 10).
+double baro_pressure_kpa; // Measured in kpa; will need to be converted to mbar (just multiply by 10).
 double H2O_pressure_abs, H2O_pressure_relative, H2O_altitude_delta, H2O_pressure_baseline; // Doubles are precise to 15 digits.
 double reference_altitude = 0; // reference_altitude is currently equal to 0, or sea level (measured in m).
-
+double H2O_level_from_press; // water level calculation (water pressure minus barometric pressure)
+                                                                             // multiplied barometric pressure by 10 to convert from kpa to mbar
+double WaterTemp;
 /*
  * SparkFun Comment
  "Thanks to Mike Grusin for letting me borrow the functions below from 
@@ -79,7 +92,7 @@ void setup()
   sensor.reset();
   sensor.begin(); 
   mpl115a2.begin(); // This shouldn't mess things up, I think these are separate "begin" syntaxes for the two libraries.
-
+  sensors.begin();
   
   H2O_pressure_baseline = sensor.getPressure(ADC_4096); // This pressure_baseline variable might only be
                                                         // used for change in atmpospheric elevation. We 
@@ -145,10 +158,15 @@ Serial.println(H2O_altitude_delta);
 
 "
 */
-  BaroPressure_mbar = mpl115a2.getPressure();  
-  Serial.print("Barometric Pressure (mbar): ");
-  Serial.println(BaroPressure_mbar * 10, 4); //*10 because 1 Kilopascal (baro sensor) = 10 milibar (water pressure)
+  baro_pressure_kpa = mpl115a2.getPressure();  
+  Serial.print("Barometric Pressure (mbar) = ");
+  Serial.println(baro_pressure_kpa, 4); //*10 because 1 Kilopascal (baro sensor) = 10 milibar (water pressure)
 
+  WaterTemp = sensors.getTempCByIndex(0);
+  sensors.requestTemperatures(); // request temp from DS18B20
+  Serial.print("Temperature for the device 1 (index 0) = ");
+  Serial.println(WaterTemp); // Print temperature reading from DS18B20
+  
 String dataRec = createDataRecord();
   
   //Save the data record to the log file
@@ -214,8 +232,9 @@ String createDataRecord()
   String data = "";
   data += samplenum;      // Creates a string called "data" and enters in the sample number
   data += ",";            // Add a comma after sample number
-  data += (H2O_pressure_abs - (BaroPressure_mbar * 10));     // This is recording the calculated water level to the file.
+  data += H2O_level_from_press = (H2O_pressure_abs - (baro_pressure_kpa * 10)); // This is recording the calculated water level to the file.
+  data += ",";
+  data += WaterTemp;
   samplenum++;            // Increment the sample number
   return data;
 }
-
