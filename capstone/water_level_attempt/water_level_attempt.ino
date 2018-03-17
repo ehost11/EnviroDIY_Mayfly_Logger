@@ -1,13 +1,12 @@
 /* 
  * This is an attempt to obtain water level derived from a SparkFun 
- * water pressure transducer and a Adafruit barometric pressure transducer
- * for the CLFLWD continuous groundwater monitor project.
- * I (Evan Host) am adapting code for each of the sensors from test sketches
- * provided by the companies for their sensors (Adafruit MPL115A2 and SparkFun MS5803)
- * and from EnviroDIY.
+ * water pressure transducer an Adafruit barometric pressure transducer
+ * and an Adafruit temperature sensor for the CLFLWD continuous groundwater 
+ * monitor project. I (Evan Host) am adapting code for each of the sensors
+ * from test sketches provided by the companies for their sensors
+ * (Adafruit MPL115A2 and SparkFun MS5803) and from EnviroDIY.
  * Here goes nothing!
   */
-
 // Call up libraries
 #include <Wire.h> // One Wire library
 #include <Adafruit_MPL115A2.h> // MPL115A2 barometric pressure sensor library
@@ -17,7 +16,7 @@
 #include <OneWire.h> // OneWire library for DS18B20 Temp sensor
 #include <DallasTemperature.h> // DallasTemperature library for DS18B20 Temp sensor
 
-// Data wire is plugged into port 4 on the Mayfly Datalogger board (D4-D5 grove port)
+// Data wire for DS18B20 temp sensor is plugged into port 4 on the Mayfly Datalogger board (D4-D5 grove port)
 #define ONE_WIRE_BUS 4
 
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
@@ -41,22 +40,25 @@ Adafruit_MPL115A2 mpl115a2;
 #define FILE_NAME "DATALOG.txt" // For some reason, the program only writes data to the SD card when this is the name of the file.
 
 // Data header  (these lines get written to the beginning of a file when it's created)
-#define LOGGERNAME "Water level attempt"
-#define DATA_HEADER "Sample Number, Water Level"
+#define LOGGERNAME "Water Level"
+#define DATA_HEADER "Sample Number, Water Pressure Difference, Water Level, Water Temperature"
 
 int samplenum = 1; // sample number starts at 1
                        
-// I am defining the variables in the SparkFun test sketch even though we may not use them.
+// define variable types
+// I am defining the variable types in the SparkFun test sketch even though we may not use them.
 float H2O_temperature_c, H20_temperature_f; // Floats are precise to 6 or 7 digits.
-double baro_pressure_kpa; // Measured in kpa; will need to be converted to mbar (just multiply by 10).
-double H2O_pressure_abs, H2O_pressure_relative, H2O_altitude_delta, H2O_pressure_baseline; // Doubles are precise to 15 digits.
+double baro_pressure_kPa; // Measured in kPa
+double H2O_pressure_mbar; // SparkFun pressure in mbar
+double H2O_pressure_kPa; // used for converting from mbar to kPa
+double H2O_pressure_relative, H2O_altitude_delta, H2O_pressure_baseline; // Doubles are precise to 15 digits. Might not use these variables.
 double reference_altitude = 0; // reference_altitude is currently equal to 0, or sea level (measured in m).
-double H2O_level_from_press; // water level calculation (water pressure minus barometric pressure)
-                                                                             // multiplied barometric pressure by 10 to convert from kpa to mbar
+double H2O_pressure; // water pressure calculation (water pressure minus barometric pressure)
+double H2O_level; // (1000 * pressure diff) / (9.80 * 1) 1000 times pressure (kPa) over gravity (9.8 m/s^2) times density (1 kg/m^3)
 double WaterTemp;
 /*
  * SparkFun Comment
- "Thanks to Mike Grusin for letting me borrow the functions below from 
+ "Thanks to Mike Grusin for letting me borrow the functions below from
  the BMP180 example code."
  functions from the BMP180 example code are the following two variable definitions 
  (sealevel and altitude) and the two return functions. Not sure if we will need these.
@@ -94,9 +96,9 @@ void setup()
   mpl115a2.begin(); // This shouldn't mess things up, I think these are separate "begin" syntaxes for the two libraries.
   sensors.begin();
   
-  H2O_pressure_baseline = sensor.getPressure(ADC_4096); // This pressure_baseline variable might only be
-                                                        // used for change in atmpospheric elevation. We 
-                                                        // may not be able to use this for groundwater elevation.
+  /* H2O_pressure_baseline = sensor.getPressure(ADC_4096); // This pressure_baseline variable might only be
+                                                             // used for change in atmpospheric elevation. We 
+                                                             // may not be able to use this for groundwater elevation. */
 
 //Initialise log file
   setupLogFile();
@@ -117,7 +119,7 @@ void loop() {
 * at ADC_4096 resolution.)"
 */
 
-H2O_pressure_abs = sensor.getPressure(ADC_4096);
+H2O_pressure_mbar = sensor.getPressure(ADC_4096);
 
 /* Specifying the degree of precision
    *  according to the SparkFun test, it looks like higher ADC values mean higher precision.
@@ -138,11 +140,11 @@ H2O_pressure_abs = sensor.getPressure(ADC_4096);
 
 // Include a conversion from absolute pressure into relative pressure (AKA, meters above sea level).
 // reference altitude here might be the barometric pressure from the Adafruit MPL115A2.
-H2O_pressure_relative = sealevel(H2O_pressure_abs, reference_altitude);
+H2O_pressure_relative = sealevel(H2O_pressure_mbar, reference_altitude);
 
 // Report values
-Serial.print("absolute water pressure = ");
-Serial.println(H2O_pressure_abs);
+Serial.print("water pressure (kPa) = ");
+Serial.println(H2O_pressure_mbar / 10);
 
 /*
  * not desired until water level calculations from presure is done.
@@ -158,9 +160,9 @@ Serial.println(H2O_altitude_delta);
 
 "
 */
-  baro_pressure_kpa = mpl115a2.getPressure();  
-  Serial.print("Barometric Pressure (mbar) = ");
-  Serial.println(baro_pressure_kpa, 4); //*10 because 1 Kilopascal (baro sensor) = 10 milibar (water pressure)
+  baro_pressure_kPa = mpl115a2.getPressure();  
+  Serial.print("Barometric Pressure (kPa) = ");
+  Serial.println(baro_pressure_kPa, 4); 
 
   WaterTemp = sensors.getTempCByIndex(0);
   sensors.requestTemperatures(); // request temp from DS18B20
@@ -228,13 +230,15 @@ void logData(String rec)
 String createDataRecord()
 {
   // Create a String type data record in CSV format
-  // SampleNumber, WaterLevel
+  // Sample Number, Water Pressure, Water Level, Water Temperature
   String data = "";
   data += samplenum;      // Creates a string called "data" and enters in the sample number
-  data += ",";            // Add a comma after sample number
-  data += H2O_level_from_press = (H2O_pressure_abs - (baro_pressure_kpa * 10)); // This is recording the calculated water level to the file.
   data += ",";
-  data += WaterTemp;
+  data += H2O_pressure = (H2O_pressure_mbar / 10) - baro_pressure_kPa; // recording the calculated water pressure from above formula ^ .
+  data += ",";
+  data += H2O_level = ((1000 * H2O_pressure) / (9.80 * 1)); // calculate and record water level from water pressure (formula in comment way up there ^ )
+  data += ",";
+  data += WaterTemp; // record water temp to SD card
   samplenum++;            // Increment the sample number
   return data;
 }
