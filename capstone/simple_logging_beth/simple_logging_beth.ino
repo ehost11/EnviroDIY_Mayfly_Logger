@@ -164,35 +164,35 @@ MaximDS3231 ds3231(1);
 // const uint8_t VoltReadsToAvg = 1; // Only read one sample
 // ExternalVoltage extvolt(VoltPower, VoltData, VoltGain, Volt_ADS1115Address, VoltReadsToAvg);
 //
-
-// ==========================================================================
-//    Maxbotix HRXL Ultrasonic Range Finder
-// ==========================================================================
-#include <MaxBotixSonar.h>
-const int8_t SonarPower = 22;  // Excite (power) pin (-1 if unconnected)
-const int8_t Sonar1Trigger = A1;  // Trigger pin (-1 if unconnected)
-const int8_t Sonar2Trigger = A2;  // Trigger pin (-1 if unconnected)
-
-// Set up a serial port for receiving sonar data - in this case, using software serial
-// Because the standard software serial library uses interrupts that conflict
-// with several other libraries used within this program, we must use a
-// version of software serial that has been stripped of interrupts and define
-// the interrrupts for it using the enableInterrup library.
-
-// If enough hardware serial ports are available on your processor, you should
-// use one of those instead.  If the proper pins are avaialbe, AltSoftSerial
-// by Paul Stoffregen is also superior to SoftwareSerial for this sensor.
-// Neither hardware serial nor AltSoftSerial require any modifications to
-// deal with interrupt conflicts.
-
-#include <SoftwareSerial_ExtInts.h>  // for the stream communication
-const int SonarData = 11;     // data receive pin
-SoftwareSerial_ExtInts sonarSerial(SonarData, -1);  // No Tx pin is required, only Rx
-
-// Now actually creating the sensor object
-MaxBotixSonar sonar1(sonarSerial, SonarPower, Sonar1Trigger) ;
-MaxBotixSonar sonar2(sonarSerial, SonarPower, Sonar2Trigger) ;
-
+//
+// // ==========================================================================
+// //    Maxbotix HRXL Ultrasonic Range Finder
+// // ==========================================================================
+// #include <MaxBotixSonar.h>
+// const int8_t SonarPower = 22;  // Excite (power) pin (-1 if unconnected)
+// const int8_t Sonar1Trigger = A1;  // Trigger pin (-1 if unconnected)
+// const int8_t Sonar2Trigger = A2;  // Trigger pin (-1 if unconnected)
+//
+// // Set up a serial port for receiving sonar data - in this case, using software serial
+// // Because the standard software serial library uses interrupts that conflict
+// // with several other libraries used within this program, we must use a
+// // version of software serial that has been stripped of interrupts and define
+// // the interrrupts for it using the enableInterrup library.
+//
+// // If enough hardware serial ports are available on your processor, you should
+// // use one of those instead.  If the proper pins are avaialbe, AltSoftSerial
+// // by Paul Stoffregen is also superior to SoftwareSerial for this sensor.
+// // Neither hardware serial nor AltSoftSerial require any modifications to
+// // deal with interrupt conflicts.
+//
+// #include <SoftwareSerial_ExtInts.h>  // for the stream communication
+// const int SonarData = 11;     // data receive pin
+// SoftwareSerial_ExtInts sonarSerial(SonarData, -1);  // No Tx pin is required, only Rx
+//
+// // Now actually creating the sensor object
+// MaxBotixSonar sonar1(sonarSerial, SonarPower, Sonar1Trigger) ;
+// MaxBotixSonar sonar2(sonarSerial, SonarPower, Sonar2Trigger) ;
+//
 
 // ==========================================================================
 //    Maxim DS18 One Wire Temperature Sensor
@@ -204,7 +204,7 @@ DeviceAddress OneWireAddress1 = {0x28, 0xFF, 0xBD, 0xBA, 0x81, 0x16, 0x03, 0x0C}
 // DeviceAddress OneWireAddress3 = {0x28, 0xFF, 0x74, 0x2B, 0x82, 0x16, 0x03, 0x57};
 // DeviceAddress OneWireAddress4 = {0x28, 0xFF, 0xB6, 0x6E, 0x84, 0x16, 0x05, 0x9B};
 // DeviceAddress OneWireAddress5 = {0x28, 0xFF, 0x3B, 0x07, 0x82, 0x16, 0x03, 0xB3};
-const int8_t OneWireBus = A0;  // Pin attached to the OneWire Bus (-1 if unconnected)
+const int8_t OneWireBus = 4;  // Pin attached to the OneWire Bus (-1 if unconnected)
 const int8_t OneWirePower = 22;  // Pin to switch power on and off (-1 if unconnected)
 MaximDS18 ds18_1(OneWireAddress1, OneWirePower, OneWireBus);
 // MaximDS18 ds18_2(OneWireAddress2, OneWirePower, OneWireBus);
@@ -218,7 +218,7 @@ MaximDS18 ds18_1(OneWireAddress1, OneWirePower, OneWireBus);
 //    MeaSpecMS5803 (Pressure, Temperature)
 // ==========================================================================
 #include <MeaSpecMS5803.h>
-// const int8_t I2CPower = 22;  // Pin to switch power on and off (-1 if unconnected)
+const int8_t I2CPower = 22;  // Pin to switch power on and off (-1 if unconnected)
 const uint8_t MS5803i2c_addr = 0x76;  // The MS5803 can be addressed either as 0x76 or 0x77
 const int MS5803maxPressure = 14;  // The maximum pressure measurable by the specific MS5803 model
 const uint8_t MS5803ReadingsToAvg = 1;
